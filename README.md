@@ -1,4 +1,4 @@
-NOTE: to start the program type in the terminal => python main.py <name of presenation>.pptx
+NOTE: to start the program type in the terminal => python main.py (name of presenation).pptx
 
 
 # The GPT-Explainer Project
