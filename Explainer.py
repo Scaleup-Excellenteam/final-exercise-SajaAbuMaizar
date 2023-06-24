@@ -1,61 +1,65 @@
-import argparse
-import asyncio
-import os
-import glob
-import time
-from dotenv import load_dotenv
+import requests
 from presentation_processor import PresentationProcessor
 
-# Load environment variables from .env file
-load_dotenv()
-var = os.environ
 
-UPLOADS_FOLDER = "uploads"
-OUTPUTS_FOLDER = "outputs"
+def upload_file(filename, email=None):
+    url = 'http://localhost:5000/upload'
+    files = {'file': open(filename, 'rb')}
+    data = {'email': email} if email else None
 
-
-async def process_file(file_path):
-    # Make a debugging print
-    print(f"Processing file: {file_path}")
-
-    # Process the file using the existing code
-    presentation_processor = PresentationProcessor()
-    await presentation_processor.main(file_path)
-
-    # Save the explanation JSON in the outputs folder
-    # Replace the existing code that saves the explanation JSON with the appropriate logic
-    # You can use the file_path or generate a new filename as per your requirement
-
-    # Make another debugging print
-    print(f"File processed: {file_path}")
+    response = requests.post(url, files=files, data=data)
+    if response.status_code == 200:
+        print('Upload successful.')
+        uid = response.json()['uid']
+        process_presentation(uid)
+    else:
+        print('Upload failed.')
 
 
-async def explainer():
-    # Create the 'outputs' folder if it doesn't exist
-    os.makedirs(OUTPUTS_FOLDER, exist_ok=True)
+def process_presentation(uid):
+    url = f'http://localhost:5000/process_presentation/{uid}'
 
-    while True:
-        # Scan the uploads folder for new files
-        file_paths = glob.glob(os.path.join(UPLOADS_FOLDER, "*"))
+    response = requests.get(url)
+    if response.status_code == 200:
+        print('Presentation processed successfully.')
+    else:
+        print('Failed to process presentation.')
 
-        for file_path in file_paths:
-            # Get the base filename without the extension
-            base_filename = os.path.splitext(os.path.basename(file_path))[0]
 
-            # Check if the file with the same base filename (with the ending '.json') already exists in the outputs
-            # folder
-            output_file_path = os.path.join(OUTPUTS_FOLDER, f"{base_filename}.json")
-            if os.path.exists(output_file_path):
-                continue  # Skip if the output file already exists
+def check_status(uid):
+    url = f'http://localhost:5000/status/{uid}'
 
-            # Process the file
-            await process_file(file_path)
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        print('Status:', data['status'])
+        print('Filename:', data['filename'])
+        print('Upload Time:', data['upload_time'])
+        print('Finish Time:', data['finish_time'])
+        print('User ID:', data['user_id'])
+    else:
+        print('Failed to retrieve status.')
 
-        # Sleep for a few seconds before the next iteration
-        time.sleep(10)
+
+def view_history():
+    url = 'http://localhost:5000/history'
+
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        for upload in data:
+            print('UID:', upload['uid'])
+            print('Filename:', upload['filename'])
+            print('Status:', upload['status'])
+            print('Upload Time:', upload['upload_time'])
+            print('Finish Time:', upload['finish_time'])
+            print('User ID:', upload['user_id'])
+            print('--------------------')
+    else:
+        print('Failed to retrieve upload history.')
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='GPT-Explainer')
-    parser.add_argument('presentation', type=str, help='Path to the presentation file')
-    asyncio.run(explainer())
+    upload_file('example.pptx', email='user@example.com')
+    check_status('uid123')
+    view_history()
